@@ -47,25 +47,27 @@ class Router():
 
     def bellman_ford(self):
         infinity = float("inf")
-        self.router_table[self.src] = [0, None, 0]
+        rec = self.router_table
+        rec[self.src] = [0, None, 0]
+        # self.router_table[self.src] = [0, None, 0]
         for v in self.graph:
-            if v not in self.router_table:
-                self.router_table[v] = [infinity, None, 0]
+            if v not in rec:
+                rec[v] = [infinity, None, 0]
 
         for dest in self.graph:
-            if dest != self.src:
-                for nb in self.neighbour:
-                    if dest in self.graph[nb]:
-                        d = self.graph[nb][dest][0] + self.router_table[nb][0]
-                        if d < self.router_table[dest][0]:
-                            self.router_table[dest][0] = d
-                            self.router_table[dest][1] = nb
+            #if dest != rec:
+            for nb in self.neighbour:
+                if dest in self.graph[nb]:
+                    d = self.graph[nb][dest][0] + rec[nb][0]
+                    if d < rec[dest][0]:
+                        rec[dest][0] = d
+                        rec[dest][1] = nb
+        return rec
 
     def updatecost(self, srcAddr, info):
         ip, srcPort = srcAddr
         srcPort = int(srcPort)
         checksrc = self.src
-        originRT = self.router_table
         if info[checksrc][2] == 1:
             if srcPort not in self.neighbour:
                 self.neighbour.append(srcPort)
@@ -81,8 +83,11 @@ class Router():
             self.graph[srcPort] = info
             #print("Graph")
             #print(self.graph)
-            self.bellman_ford()
-            if originRT != self.router_table:
+            rec = self.bellman_ford()
+            print("SHOW TABLE AFTER BELLMANFORD")
+            print(rec)
+            if rec != self.router_table:
+                self.router_table = rec
                 self.broadcast()
         else:
             self.showtable()
