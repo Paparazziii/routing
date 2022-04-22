@@ -7,49 +7,91 @@ Distance Algorithm Routing Algorithm
 """
 
 import socket
-import sys
+import sys, json
 import os
 import time
 from routenode import *
 
+
 class Router():
-    graph = {}
-    shortest_path = {}
+    graph = {}  # key is all other routers, value is their router table
+    router_table = {}  # key is all routers, value is [shortest path, next-hop]
     neighbour = []
     last = 0
 
     def __init__(self, model, src, neigh):
         self.ip = socket.gethostbyname(socket.gethostname())
         self.src = src
+        self.servP = (self.ip, src)
+        self.udpSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.udpSocket.bind(self.servP)
         self.model = model
         for key in neigh:
             self.neighbour.append(key)
-        self.graph[src] = neigh
+            self.router_table[key] = [neigh[key], None, 1]
+
+    def recv(self):
+        while True:
+            data, srcAddr = self.udpSocket.recvfrom(1024)
+            loaded = json.loads(data)
+            type = loaded["type"]
+            info = loaded["info"]
+            ip, srcPort = srcAddr
+            print(f"[{time.time()}] Message received at Node {self.src} from Node {srcPort}")
+            if type == "updatecost":
+                self.updatecost(srcAddr, info)
 
     def bellman_ford(self):
-        rec = {}
-        p = {}
         infinity = float("inf")
+        self.router_table[self.src] = [0, None, 0]
         for v in self.graph:
-            rec[v] = infinity
-            p[v] = None
-        rec[self.src] = 0
+            if v not in self.router_table:
+                self.router_table[v] = [infinity, None, 0]
 
-        for i in range(len(self.graph) - 1):
-            for u in self.graph:
-                for v in self.graph[u]:
-                    if rec[v] > self.graph[u][v] + rec[u]:
-                        rec[v] = self.graph[u][v] + rec[u]
-                        p[v] = u
+        for dest in self.graph:
+            if dest != self.src:
+                self.router_table[dest] = infinity
+                for nb in self.neighbour:
+                    if dest in self.graph[nb]:
+                        d = self.graph[nb][dest][0] + self.router_table[nb][0]
+                        if d < self.router_table[dest][0]:
+                            self.router_table[dest][0] = d
+                            self.router_table[dest][1] = nb
 
-        # check if a cycle existed
-        for u in self.graph:
-            for v in self.graph[u]:
-                if rec[v] > rec[u] + self.graph[u][v]:
-                    return None, None
+    def updatecost(self, srcAddr, info):
+        ip, srcPort = srcAddr
+        if info[self.src][2] == 1:
+            if srcPort not in self.neighbour:
+                self.neighbour.append(srcPort)
+                self.router_table[srcPort] = [info[self.src][0], None, 1]
+        if srcPort in self.graph and self.graph[srcPort] == info:
+            self.showtable()
+        else:
+            self.graph[srcPort] = info
+            self.bellman_ford()
+            self.broadcast()
 
-        return rec, p
+    def showtable(self):
+        print(f"[{time.time()}] Node {self.src} Routing Table")
+        for i in sorted(self.router_table.keys()):
+            if self.router_table[i][1] is None:
+                print(f"- ({self.router_table[i][1]}) -> Node {i}")
+            else:
+                print(f"- ({self.router_table[i][1]}) -> Node {i}; "
+                      f"Next hop -> Node {self.router_table[i][1]}")
 
+    def broadcast(self):
+        for key in self.neighbour:
+            addr = (self.ip, key)
+            data = {'type': "updatecost", 'info': self.router_table}
+            self.udpSocket.sendto(json.dumps(data), addr)
+            print(f"[{time.time()}] Message sent from Node {self.src} to Node {key}")
 
 def initRouter(model, src, neigh, last):
-    router = Router(model, src, neigh)
+    try:
+        router = Router(model, src, neigh)
+        router.recv()
+        if last == 1:
+            router.broadcast()
+    except KeyboardInterrupt:
+        print("Exiting")
