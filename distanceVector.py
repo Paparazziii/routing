@@ -38,7 +38,7 @@ class Router():
             types = loaded["type"]
             info = loaded["info"]
             ip, srcPort = srcAddr
-            print(f"[{time.time()}] Message received at Node {self.src} from Node {srcPort}")
+            # print(f"[{time.time()}] Message received at Node {self.src} from Node {srcPort}")
             newTable = {}
             for key in info:
                 newTable[int(key)] = info[key]
@@ -54,13 +54,10 @@ class Router():
 
         for dest in self.graph:
             if dest != self.src:
-                self.router_table[dest] = [infinity, None, 0]
                 for nb in self.neighbour:
                     if dest in self.graph[nb]:
                         d = self.graph[nb][dest][0] + self.router_table[nb][0]
-                        print("HERE IS THE ROUTER TABLE DEST")
-                        print(self.router_table)
-                        print(dest)
+                        print(f"SHOWING D         {d}")
                         if d < self.router_table[dest][0]:
                             self.router_table[dest][0] = d
                             self.router_table[dest][1] = nb
