@@ -82,24 +82,15 @@ class Router():
             elif srcPort not in self.graph[key]:
                 self.graph[key][srcPort] = [info[key][0], srcPort, info[key][2]]
         if srcPort not in self.graph or self.graph[srcPort] != info:
-            #self.broadcast()
             self.graph[srcPort] = info
-            #print(f"Before  {self.router_table}")
             originRT = self.router_table
-            #print("Graph")
-            #print(self.graph)
             rec, changed = self.bellman_ford(originRT)
-            self.changed = self.changed|rec
-            print(f"changed: {self.changed}")
-            #print("SHOW TABLE AFTER BELLMANFORD")
-            #print(f"REC  {rec}")
-            #print(f"After {self.router_table}")
+            self.changed = self.changed|changed
             if self.changed == 1:
                 self.router_table = rec
                 self.broadcast()
                 self.changed = 0
-        else:
-            self.showtable()
+                self.showtable()
 
     def showtable(self):
         print(f"[{time.time()}] Node {self.src} Routing Table")
