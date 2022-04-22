@@ -73,15 +73,18 @@ class Router():
                 self.graph[srcPort] = info
         for key in info:
             if key not in self.graph:
-                self.graph[key] = {srcPort:[info[key][0], srcPort, info[key[2]]]}
+                self.graph[key] = {srcPort:[info[key][0], srcPort, info[key][2]]}
             elif srcPort not in self.graph[key]:
-                self.graph[key][srcPort] = [info[key][0], srcPort, info[key[2]]]
+                self.graph[key][srcPort] = [info[key][0], srcPort, info[key][2]]
         if srcPort not in self.graph or self.graph[srcPort] != info:
-            self.broadcast()
+            #self.broadcast()
             self.graph[srcPort] = info
-            print("Graph")
-            print(self.graph)
+            #print("Graph")
+            #print(self.graph)
             self.bellman_ford()
+            if originRT != self.router_table:
+                self.broadcast()
+        else:
             self.showtable()
 
     def showtable(self):
