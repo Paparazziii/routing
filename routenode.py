@@ -20,11 +20,11 @@ if __name__ == '__main__':
         model = sys.argv[2]
         src = int(sys.argv[4])
         lens = len(sys.argv)
-        for i in range(5, len(sys.argv), 2):
+        for i in range(5, len(sys.argv)-1, 2):
             if sys.argv[i] != "last":
                 neigh[int(sys.argv[i])] = int(sys.argv[i+1])
-            else:
-                last = 1
-                if sys.argv[-1] != "last":
-                    change = int(sys.argv[-1])
+        if sys.argv[-1] == "last" or sys.argv[-2] == "last":
+            last = 1
+            if sys.argv[-1] != "last":
+                change = int(sys.argv[-1])
         initRouter(model, src, neigh, last)
