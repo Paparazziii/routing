@@ -57,7 +57,6 @@ class Router():
                 for nb in self.neighbour:
                     if dest in self.graph[nb]:
                         d = self.graph[nb][dest][0] + self.router_table[nb][0]
-                        print(f"SHOWING D         {d}")
                         if d < self.router_table[dest][0]:
                             self.router_table[dest][0] = d
                             self.router_table[dest][1] = nb
@@ -66,16 +65,21 @@ class Router():
         ip, srcPort = srcAddr
         srcPort = int(srcPort)
         checksrc = self.src
+        originRT = self.router_table
         if info[checksrc][2] == 1:
             if srcPort not in self.neighbour:
                 self.neighbour.append(srcPort)
                 self.router_table[srcPort] = [info[checksrc][0], None, 1]
+                self.graph[srcPort] = info
         if srcPort in self.graph and self.graph[srcPort] == info:
+            print("Should only get in here once")
             self.showtable()
         else:
             self.graph[srcPort] = info
             self.bellman_ford()
-            self.broadcast()
+            if self.router_table != originRT:
+                print("send new info")
+                self.broadcast()
 
     def showtable(self):
         print(f"[{time.time()}] Node {self.src} Routing Table")
@@ -97,7 +101,6 @@ class Router():
 def initRouter(model, src, neigh, last):
     try:
         router = Router(model, src, neigh)
-        router.showtable()
         if last == 1:
             router.broadcast()
         router.recv()
