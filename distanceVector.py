@@ -38,7 +38,7 @@ class Router():
             types = loaded["type"]
             info = loaded["info"]
             ip, srcPort = srcAddr
-            # print(f"[{time.time()}] Message received at Node {self.src} from Node {srcPort}")
+            print(f"[{time.time()}] Message received at Node {self.src} from Node {srcPort}")
             newTable = {}
             for key in info:
                 newTable[int(key)] = info[key]
@@ -62,6 +62,8 @@ class Router():
                             self.router_table[dest][1] = nb
 
     def updatecost(self, srcAddr, info):
+        #print("INFO GETTING")
+        #print(info)
         ip, srcPort = srcAddr
         srcPort = int(srcPort)
         checksrc = self.src
@@ -71,15 +73,13 @@ class Router():
                 self.neighbour.append(srcPort)
                 self.router_table[srcPort] = [info[checksrc][0], None, 1]
                 self.graph[srcPort] = info
-        if srcPort in self.graph and self.graph[srcPort] == info:
-            print("Should only get in here once")
-            self.showtable()
-        else:
+        if srcPort not in self.graph or self.graph[srcPort] != info:
+            self.broadcast()
             self.graph[srcPort] = info
+            print("Graph")
+            print(self.graph)
             self.bellman_ford()
-            if self.router_table != originRT:
-                print("send new info")
-                self.broadcast()
+            self.showtable()
 
     def showtable(self):
         print(f"[{time.time()}] Node {self.src} Routing Table")
