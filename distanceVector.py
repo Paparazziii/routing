@@ -62,8 +62,6 @@ class Router():
                             self.router_table[dest][1] = nb
 
     def updatecost(self, srcAddr, info):
-        #print("INFO GETTING")
-        #print(info)
         ip, srcPort = srcAddr
         srcPort = int(srcPort)
         checksrc = self.src
@@ -73,6 +71,11 @@ class Router():
                 self.neighbour.append(srcPort)
                 self.router_table[srcPort] = [info[checksrc][0], None, 1]
                 self.graph[srcPort] = info
+        for key in info:
+            if key not in self.graph:
+                self.graph[key] = {srcPort:[info[key][0], srcPort, info[key[2]]]}
+            elif srcPort not in self.graph[key]:
+                self.graph[key][srcPort] = [info[key][0], srcPort, info[key[2]]]
         if srcPort not in self.graph or self.graph[srcPort] != info:
             self.broadcast()
             self.graph[srcPort] = info
