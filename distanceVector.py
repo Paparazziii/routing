@@ -17,6 +17,7 @@ class Router():
     graph = {}  # key is all other routers, value is their router table
     neighbour = []
     last = 0
+    changed = 1
 
     def __init__(self, model, src, neigh):
         self.ip = socket.gethostbyname(socket.gethostname())
@@ -83,18 +84,20 @@ class Router():
         if srcPort not in self.graph or self.graph[srcPort] != info:
             #self.broadcast()
             self.graph[srcPort] = info
-            print(f"Before  {self.router_table}")
+            #print(f"Before  {self.router_table}")
             originRT = self.router_table
             #print("Graph")
             #print(self.graph)
             rec, changed = self.bellman_ford(originRT)
-            print(f"changed: {changed}")
+            self.changed = self.changed|rec
+            print(f"changed: {self.changed}")
             #print("SHOW TABLE AFTER BELLMANFORD")
-            print(f"REC  {rec}")
-            print(f"After {self.router_table}")
-            if rec != self.router_table:
+            #print(f"REC  {rec}")
+            #print(f"After {self.router_table}")
+            if self.changed == 1:
                 self.router_table = rec
                 self.broadcast()
+                self.changed = 0
         else:
             self.showtable()
 
