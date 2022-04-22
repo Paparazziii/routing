@@ -15,7 +15,6 @@ from routenode import *
 
 class Router():
     graph = {}  # key is all other routers, value is their router table
-    router_table = {}  # key is all routers, value is [shortest path, next-hop]
     neighbour = []
     last = 0
 
@@ -26,6 +25,7 @@ class Router():
         self.udpSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.udpSocket.bind(self.servP)
         self.model = model
+        self.router_table = {self.src:[0,None,0]}  # key is all routers, value is [shortest path, next-hop, isneighbour]
         for key in neigh:
             self.neighbour.append(int(key))
             self.router_table[int(key)] = [neigh[key], None, 1]
@@ -45,10 +45,11 @@ class Router():
             if types == "updatecost":
                 self.updatecost(srcAddr, newTable)
 
-    def bellman_ford(self):
+    def bellman_ford(self, rec):
         infinity = float("inf")
-        rec = self.router_table
-        rec[self.src] = [0, None, 0]
+        changed = 0
+        #rec = self.router_table
+        #rec[self.src] = [0, None, 0]
         # self.router_table[self.src] = [0, None, 0]
         for v in self.graph:
             if v not in rec:
@@ -60,9 +61,10 @@ class Router():
                 if dest in self.graph[nb]:
                     d = self.graph[nb][dest][0] + rec[nb][0]
                     if d < rec[dest][0]:
+                        changed = 1
                         rec[dest][0] = d
                         rec[dest][1] = nb
-        return rec
+        return rec, changed
 
     def updatecost(self, srcAddr, info):
         ip, srcPort = srcAddr
@@ -81,11 +83,15 @@ class Router():
         if srcPort not in self.graph or self.graph[srcPort] != info:
             #self.broadcast()
             self.graph[srcPort] = info
+            print(f"Before  {self.router_table}")
+            originRT = self.router_table
             #print("Graph")
             #print(self.graph)
-            rec = self.bellman_ford()
-            print("SHOW TABLE AFTER BELLMANFORD")
-            print(rec)
+            rec, changed = self.bellman_ford(originRT)
+            print(f"changed: {changed}")
+            #print("SHOW TABLE AFTER BELLMANFORD")
+            print(f"REC  {rec}")
+            print(f"After {self.router_table}")
             if rec != self.router_table:
                 self.router_table = rec
                 self.broadcast()
