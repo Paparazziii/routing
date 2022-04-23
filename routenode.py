@@ -14,7 +14,8 @@ from distanceVector import *
 if __name__ == '__main__':
     alg = sys.argv[1]
     last = 0
-    change = 0
+    change = -1
+    lastneigh = None
     if alg == "dv":
         neigh = {}
         model = sys.argv[2]
@@ -27,4 +28,5 @@ if __name__ == '__main__':
             last = 1
             if sys.argv[-1] != "last":
                 change = int(sys.argv[-1])
-        initRouter(model, src, neigh, last)
+                lastneigh = int(sys.argv[-4])
+        initRouter(model, src, neigh, last, change, lastneigh)

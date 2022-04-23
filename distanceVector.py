@@ -19,10 +19,17 @@ class Router():
     last = 0
     changed = 1
 
-    def __init__(self, model, src, neigh):
+    def __init__(self, model, src, neigh, last, change, lastneigh, init_time):
         self.ip = socket.gethostbyname(socket.gethostname())
         self.src = src
         self.servP = (self.ip, src)
+        self.initTime = init_time
+        self.last = 0
+        if last == 1 and change != -1 and model == 'r':
+            self.last = last
+            self.changeBit = change
+            self.model = model
+            self.lastNeigh = lastneigh
         self.udpSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.udpSocket.bind(self.servP)
         self.model = model
@@ -34,6 +41,15 @@ class Router():
 
     def recv(self):
         while True:
+            currTime = time.time()
+            if self.last == 1 and self.model == 'r':
+                if currTime - self.initTime >= 30:
+                    #self.router_table[self.lastNeigh] = [change, None, 1]
+                    self.graph[self.src][self.lastNeigh] = [change, None, 1]
+                    self.graph[self.lastNeigh][self.src] = [change, None, 1]
+                    rec, changed = self.bellman_ford(self.graph)
+                    self.router_table = rec
+                    self.broadcast()
             data, srcAddr = self.udpSocket.recvfrom(1024)
             loaded = json.loads(data.decode())
             types = loaded["type"]
@@ -49,9 +65,6 @@ class Router():
     def bellman_ford(self, rec):
         infinity = float("inf")
         changed = 0
-        #rec = self.router_table
-        #rec[self.src] = [0, None, 0]
-        # self.router_table[self.src] = [0, None, 0]
         for v in self.graph:
             if v not in rec:
                 rec[v] = [infinity, None, 0]
@@ -109,9 +122,11 @@ class Router():
             self.udpSocket.sendto(str.encode(json.dumps(data)), addr)
             print(f"[{time.time()}] Message sent from Node {self.src} to Node {key}")
 
-def initRouter(model, src, neigh, last):
+
+def initRouter(model, src, neigh, last, change, lastneigh):
     try:
-        router = Router(model, src, neigh)
+        init_time = time.time()
+        router = Router(model, src, neigh, last, change, lastneigh, init_time)
         if last == 1:
             router.broadcast()
         router.recv()
