@@ -75,6 +75,7 @@ class Router():
                 print(f"[{time.time()}] Node {srcPort} cost updated to {changebit}")
                 self.graph[self.src][srcPort] = [changebit, None, 1]
                 self.graph[srcPort][self.src] = [changebit, None, 1]
+                self.neighbour[srcPort] = changebit
                 thechange = 0
                 if self.router_table[srcPort][0] != changebit:
                     self.router_table[srcPort] = [changebit, None, 1]
@@ -101,6 +102,7 @@ class Router():
                 self.graph[self.src][self.lastNeigh] = [self.changeBit, None, 1]
                 self.graph[self.lastNeigh][self.src] = [self.changeBit, None, 1]        
                 self.router_table[self.lastNeigh] = [self.changeBit, None, 1]
+                self.neighbour[self.lastNeigh] = self.changeBit
                 rec, changed = self.bellman_ford(self.router_table)
                 if changed:
                     self.router_table = rec
@@ -111,7 +113,6 @@ class Router():
     def bellman_ford(self, rec):
         infinity = float("inf")
         changed = 0
-        print(f"REC {rec}")
         for dest in self.graph:
             if dest != self.src:
                 cost = infinity
@@ -119,7 +120,8 @@ class Router():
                 if dest in self.neighbour:
                     cost = self.neighbour[dest]
                 for nb in self.neighbour:
-                    if dest in self.graph[nb]:
+                    #print(f"COST = {cost}") 
+                    if dest in self.graph[nb] and dest != nb:
                         d = self.graph[nb][dest][0] + rec[nb][0]
                         if d < cost:
                             cost = d
