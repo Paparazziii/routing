@@ -25,6 +25,7 @@ class Router():
         self.servP = (self.ip, src)
         self.initTime = init_time
         self.last = 0
+        #print(f"CHANGE = {change}")
         if last == 1 and change != -1 and model == 'r':
             self.last = last
             self.changeBit = change
@@ -42,7 +43,10 @@ class Router():
     def recv(self):
         while True:
             currTime = time.time()
+            print(f"LAST = {self.last}")
+            print(f"MODE = {self.model}")
             if self.last == 1 and self.model == 'r':
+                print(currTime - self.initTime)
                 if currTime - self.initTime >= 30:
                     addr = (self.ip, self.lastNeigh)
                     data = {'type': "linkchange", 'info': self.router_table}
