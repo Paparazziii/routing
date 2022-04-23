@@ -32,9 +32,10 @@ class Router():
         self.udpSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.udpSocket.bind(self.servP)
         self.model = model
+        self.neighbour = {}
         self.router_table = {self.src:[0,None,0]}  # key is all routers, value is [shortest path, next-hop, isneighbour]
         for key in neigh:
-            self.neighbour.append(int(key))
+            self.neighbour[int(key)] = neigh[key]
             self.router_table[int(key)] = [neigh[key], None, 1]
             self.graph[int(key)] = {}
         self.Thread_recv = Thread(target=self.recv)
@@ -115,6 +116,8 @@ class Router():
             if dest != self.src:
                 cost = infinity
                 nexthop = None
+                if dest in self.neighbour:
+                    cost = self.neighbour[dest]
                 for nb in self.neighbour:
                     if dest in self.graph[nb]:
                         d = self.graph[nb][dest][0] + rec[nb][0]
@@ -154,7 +157,7 @@ class Router():
             #print("111111111111111111111111111")
             if srcPort not in self.neighbour:
                 #print("222222222222222222222")
-                self.neighbour.append(srcPort)
+                self.neighbour[srcPort] = info[checksrc][0]
                 self.router_table[srcPort] = [info[checksrc][0], None, 1]
                 self.graph[srcPort] = info
         for key in info:
