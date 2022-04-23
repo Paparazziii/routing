@@ -100,8 +100,13 @@ class Router():
 
     def timewaiter(self):
         currTime = time.time()
-        if self.last == 1 and self.changeBit != -1:
-            while True:
+        #print("be here")
+        #print(f"LAST  {self.last}")
+        #print(f"CHANGEBIT {self.changeBit}")
+        while True:
+            if self.last == 1 and self.changeBit != -1:
+                #print("start waiting")
+                print(currTime - self.initTime)
                 if currTime - self.initTime >= 30:
                     addr = (self.ip, self.lastNeigh)
                     data = {'type': "linkchange", 'info': self.changeBit}
@@ -167,6 +172,6 @@ def initRouter(model, src, neigh, last, change, lastneigh):
         router = Router(model, src, neigh, last, change, lastneigh, init_time)
         if last == 1:
             router.broadcast("updatecost")
-        router.recv()
+        router.start()
     except KeyboardInterrupt:
         print("Exiting")
