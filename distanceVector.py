@@ -66,7 +66,7 @@ class Router():
                 newTable = {}
                 for key in info:
                     newTable[int(key)] = info[key]
-                print(f"SRC {srcPort}  {newTable}")
+                #print(f"SRC {srcPort}  {newTable}")
                 self.updatecost(srcAddr, newTable)
             if types == "linkchange":
                 print(f"[{time.time()}] Link value message received at Node {self.src} from Node {srcPort}")
@@ -110,7 +110,7 @@ class Router():
     def bellman_ford(self, rec):
         infinity = float("inf")
         changed = 0
-        newTable = {}
+        print(f"REC {rec}")
         for dest in self.graph:
             if dest != self.src:
                 cost = infinity
@@ -121,10 +121,11 @@ class Router():
                         if d < cost:
                             cost = d
                             nexthop = nb
-                if cost != rec[dest[0]]:
+                if cost != rec[dest][0]:
                     changed = 1
                     rec[dest][0] = cost
                     rec[dest][1] = nexthop
+                    print(f"after {rec}")
         """
         for v in self.graph:
             if v not in rec:
@@ -173,7 +174,7 @@ class Router():
             rec, changed = self.bellman_ford(originRT)
             self.changed = self.changed|changed
             if self.changed == 1:
-                print("555555555555555555")
+                #print("555555555555555555")
                 self.router_table = rec
                 self.broadcast("updatecost")
                 self.changed = 0
