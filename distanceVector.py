@@ -110,6 +110,22 @@ class Router():
     def bellman_ford(self, rec):
         infinity = float("inf")
         changed = 0
+        newTable = {}
+        for dest in self.graph:
+            if dest != self.src:
+                cost = infinity
+                nexthop = None
+                for nb in self.neighbour:
+                    if dest in self.graph[nb]:
+                        d = self.graph[nb][dest][0] + rec[nb][0]
+                        if d < cost:
+                            cost = d
+                            nexthop = nb
+                if cost != rec[dest[0]]:
+                    changed = 1
+                    rec[dest][0] = cost
+                    rec[dest][1] = nexthop
+        """
         for v in self.graph:
             if v not in rec:
                 rec[v] = [infinity, None, 0]
@@ -126,6 +142,7 @@ class Router():
                         changed = 1
                         rec[dest][0] = d
                         rec[dest][1] = nb
+        """
         return rec, changed
 
     def updatecost(self, srcAddr, info):
