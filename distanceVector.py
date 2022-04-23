@@ -7,7 +7,8 @@ Distance Algorithm Routing Algorithm
 """
 
 import socket
-import sys, json
+import sys
+import json
 import os
 import time
 from routenode import *
@@ -69,7 +70,7 @@ class Router():
                     newTable[int(key)] = info[key]
                 #print(f"SRC {srcPort}  {newTable}")
                 self.updatecost(srcAddr, newTable)
-            if types == "linkchange":
+            elif types == "linkchange":
                 print(f"[{time.time()}] Link value message received at Node {self.src} from Node {srcPort}")
                 changebit = info
                 print(f"[{time.time()}] Node {srcPort} cost updated to {changebit}")
@@ -85,7 +86,7 @@ class Router():
                 #print(f"AFTER {rec}")
                 if changed|thechange:
                     self.router_table = rec
-                    self.broadcast("updatecost")
+                    self.broadcast("updatecost", self.router_table)
                     self.showtable()
 
     def timewaiter(self):
@@ -106,12 +107,8 @@ class Router():
                 rec, changed = self.bellman_ford(self.router_table)
                 if changed:
                     self.router_table = rec
-                    if(self.model == 'r'):
-                        self.broadcast("updatecost")
-                        self.showtable()
-                    elif(self.model == 'p'):
-                        self.poisonReverse(self.lastNeigh)
-                        self.showtable()
+                    self.broadcast("updatelinkcost", self.router_table)
+                    self.showtable()
                 break
 
     def bellman_ford(self, rec):
@@ -155,9 +152,14 @@ class Router():
             originRT = self.router_table
             rec, changed = self.bellman_ford(originRT)
             self.changed = self.changed|changed
-            if self.changed == 1:
+            if self.changed == 1 and self.model == "r":
                 self.router_table = rec
-                self.broadcast("updatecost")
+                self.broadcast("updatecost", self.router_table)
+                self.changed = 0
+                self.showtable()
+            elif self.changed == 1 and self.model == "p":
+                self.router_table = rec
+                self.poisonReverse()
                 self.changed = 0
                 self.showtable()
 
@@ -171,24 +173,33 @@ class Router():
                     print(f"- ({self.router_table[i][0]}) -> Node {i}; "
                         f"Next hop -> Node {self.router_table[i][1]}")
 
-    def broadcast(self, type):
+    def broadcast(self, type, table):
         for key in self.neighbour:
             addr = (self.ip, key)
-            data = {'type': type, 'info': self.router_table}
+            data = {'type': type, 'info': table}
             self.udpSocket.sendto(str.encode(json.dumps(data)), addr)
             print(f"[{time.time()}] Message sent from Node {self.src} to Node {key}")
 
-    def poisonReverse(self, linkchange):
-        for key in self.neighbour:
-            addr = (self.ip, key)
-            data = {'type': 'updatecost'}
-            if self.graph[key][linkchange][2] == self.src:
-                newTable = self.router_table
-                newTable[linkchange] = [float("inf"), None, 0]
-                data['info'] = newTable
-            else:
-                data['info'] = self.router_table
-            self.udpSocket.sendto(str.encode(json.dumps(data)), addr)
+    def poisonReverse(self):
+        poison = []
+        newTable = self.router_table
+        for dest in self.neighbour:
+            for key in self.neighbour:
+                addr = (self.ip, key)
+                data = {'type': "updatecost"}
+                if self.graph[key][dest][1] == self.src and self.graph[self.src][dest][1] == key:
+                    newTable[dest] = [float("inf"), None, 0]
+                    data['info'] = newTable
+                    self.udpSocket.sendto(str.encode(json.dumps(data)), addr)
+                    print(f"[{time.time()}] Message sent from Node {self.src} to Node {key}")
+                    poison.append(key)
+
+        for dest in self.neighbour:
+            if dest not in poison:
+                addr = (self.ip, dest)
+                data = {'type': type, 'info': self.router_table}
+                self.udpSocket.sendto(str.encode(json.dumps(data)), addr)
+                print(f"[{time.time()}] Message sent from Node {self.src} to Node {dest}")
 
 
 def initRouter(model, src, neigh, last, change, lastneigh):
@@ -196,7 +207,7 @@ def initRouter(model, src, neigh, last, change, lastneigh):
         init_time = time.time()
         router = Router(model, src, neigh, last, change, lastneigh, init_time)
         if last == 1:
-            router.broadcast("updatecost")
+            router.broadcast("updatecost",router.router_table)
         router.start()
     except KeyboardInterrupt:
         print("Exiting")
