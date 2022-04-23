@@ -120,7 +120,6 @@ class Router():
                 if dest in self.neighbour:
                     cost = self.neighbour[dest]
                 for nb in self.neighbour:
-                    #print(f"COST = {cost}") 
                     if dest in self.graph[nb] and dest != nb:
                         d = self.graph[nb][dest][0] + rec[nb][0]
                         if d < cost:
@@ -130,25 +129,7 @@ class Router():
                     changed = 1
                     rec[dest][0] = cost
                     rec[dest][1] = nexthop
-                    print(f"after {rec}")
-        """
-        for v in self.graph:
-            if v not in rec:
-                rec[v] = [infinity, None, 0]
 
-        for dest in self.graph:
-            #if dest != rec:
-            for nb in self.neighbour:
-                if dest in self.graph[nb]:
-                    d = self.graph[nb][dest][0] + rec[nb][0]
-                    #d = infinity
-                    #print(f"GRAPH  {self.graph[nb][dest][0]}")
-                    #print(f"TABLE  {rec[nb]}")
-                    if d < rec[dest][0]:
-                        changed = 1
-                        rec[dest][0] = d
-                        rec[dest][1] = nb
-        """
         return rec, changed
 
     def updatecost(self, srcAddr, info):
@@ -156,30 +137,21 @@ class Router():
         srcPort = int(srcPort)
         checksrc = self.src
         if info[checksrc][2] == 1:
-            #print("111111111111111111111111111")
             if srcPort not in self.neighbour:
-                #print("222222222222222222222")
                 self.neighbour[srcPort] = info[checksrc][0]
                 self.router_table[srcPort] = [info[checksrc][0], None, 1]
                 self.graph[srcPort] = info
         for key in info:
             if key not in self.graph:
-                #print("2222222222222222222")
                 self.graph[key] = {srcPort:[info[key][0], srcPort, info[key][2]]}
             elif srcPort not in self.graph[key]:
-                #print("333333333333333333333")
                 self.graph[key][srcPort] = [info[key][0], srcPort, info[key][2]]
         if srcPort not in self.graph or self.graph[srcPort] != info:
-            #print("444444444444444444444")
-            #print(self.graph[srcPort])
-            #print(info)
-            #print(self.router_table)
             self.graph[srcPort] = info
             originRT = self.router_table
             rec, changed = self.bellman_ford(originRT)
             self.changed = self.changed|changed
             if self.changed == 1:
-                #print("555555555555555555")
                 self.router_table = rec
                 self.broadcast("updatecost")
                 self.changed = 0
