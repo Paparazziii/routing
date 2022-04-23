@@ -79,6 +79,24 @@ class Router():
                     self.broadcast("updatecost")
                     self.showtable()
 
+    def timewaiter(self):
+        while True:
+            if self.last == 1 and self.changeBit != -1:
+                time.sleep(30)
+                addr = (self.ip, self.lastNeigh)
+                data = {'type': "linkchange", 'info': self.changeBit}
+                print(f"[{time.time()}] Node {self.lastNeigh} cost updated to {self.changeBit}")
+                self.udpSocket.sendto(str.encode(json.dumps(data)), addr)
+                print(f"[{time.time()}] Link value message sent from Node {self.src} to Node {self.lastNeigh}")
+                # self.router_table[self.lastNeigh] = [change, None, 1]
+                self.graph[self.src][self.lastNeigh] = [self.changeBit, None, 1]
+                self.graph[self.lastNeigh][self.src] = [self.changeBit, None, 1]
+                rec, changed = self.bellman_ford(self.graph)
+                if changed:
+                    self.router_table = rec
+                    self.broadcast("updatecost")
+                    self.showtable()
+                break
 
     def bellman_ford(self, rec):
         infinity = float("inf")
@@ -97,31 +115,6 @@ class Router():
                         rec[dest][0] = d
                         rec[dest][1] = nb
         return rec, changed
-
-    def timewaiter(self):
-        currTime = time.time()
-        #print("be here")
-        #print(f"LAST  {self.last}")
-        #print(f"CHANGEBIT {self.changeBit}")
-        while True:
-            if self.last == 1 and self.changeBit != -1:
-                #print("start waiting")
-                print(currTime - self.initTime)
-                if currTime - self.initTime >= 30:
-                    addr = (self.ip, self.lastNeigh)
-                    data = {'type': "linkchange", 'info': self.changeBit}
-                    print(f"[{time.time()}] Node {self.lastNeigh} cost updated to {self.changeBit}")
-                    self.udpSocket.sendto(str.encode(json.dumps(data)), addr)
-                    print(f"[{time.time()}] Link value message sent from Node {self.src} to Node {self.lastNeigh}")
-                    # self.router_table[self.lastNeigh] = [change, None, 1]
-                    self.graph[self.src][self.lastNeigh] = [self.changeBit, None, 1]
-                    self.graph[self.lastNeigh][self.src] = [self.changeBit, None, 1]
-                    rec, changed = self.bellman_ford(self.graph)
-                    if changed:
-                        self.router_table = rec
-                        self.broadcast("updatecost")
-                        self.showtable()
-                    break
 
     def updatecost(self, srcAddr, info):
         ip, srcPort = srcAddr
