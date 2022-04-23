@@ -106,8 +106,12 @@ class Router():
                 rec, changed = self.bellman_ford(self.router_table)
                 if changed:
                     self.router_table = rec
-                    self.broadcast("updatecost")
-                    self.showtable()
+                    if(self.model == 'r'):
+                        self.broadcast("updatecost")
+                        self.showtable()
+                    elif(self.model == 'p'):
+                        self.poisonReverse(self.lastNeigh)
+                        self.showtable()
                 break
 
     def bellman_ford(self, rec):
@@ -173,6 +177,18 @@ class Router():
             data = {'type': type, 'info': self.router_table}
             self.udpSocket.sendto(str.encode(json.dumps(data)), addr)
             print(f"[{time.time()}] Message sent from Node {self.src} to Node {key}")
+
+    def poisonReverse(self, linkchange):
+        for key in self.neighbour:
+            addr = (self.ip, key)
+            data = {'type': 'updatecost'}
+            if self.graph[key][linkchange][2] == self.src:
+                newTable = self.router_table
+                newTable[linkchange] = [float("inf"), None, 0]
+                data['info'] = newTable
+            else:
+                data['info'] = self.router_table
+            self.udpSocket.sendto(str.encode(json.dumps(data)), addr)
 
 
 def initRouter(model, src, neigh, last, change, lastneigh):
