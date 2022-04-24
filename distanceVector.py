@@ -56,6 +56,7 @@ class Router():
             print("Exiting")
             sys.exit()
 
+    # receive the router table updating from other routers
     def recv(self):
         while True:
             data, srcAddr = self.udpSocket.recvfrom(1024)
@@ -63,37 +64,18 @@ class Router():
             types = loaded["type"]
             info = loaded["info"]
             ip, srcPort = srcAddr
-            if types == "updatecost":
-                print(f"[{time.time()}] Message received at Node {self.src} from Node {srcPort}")
-                newTable = {}
-                for key in info:
-                    newTable[int(key)] = info[key]
-                #print(f"SRC {srcPort}  {newTable}")
-                self.updatecost(srcAddr, newTable)
-            elif types == "linkchange":
-                print(f"[{time.time()}] Link value message received at Node {self.src} from Node {srcPort}")
-                changebit = info
-                print(f"[{time.time()}] Node {srcPort} cost updated to {changebit}")
-                self.graph[self.src][srcPort] = [changebit, None, 1]
-                self.graph[srcPort][self.src] = [changebit, None, 1]
-                self.neighbour[srcPort] = changebit
-                thechange = 0
-                if self.router_table[srcPort][0] != changebit:
-                    self.router_table[srcPort] = [changebit, None, 1]
-                    thechange = 1
-                #print(f"BEFORE {self.router_table}")
-                rec, changed = self.bellman_ford(self.router_table)
-                #print(f"AFTER {rec}")
-                if changed|thechange:
-                    self.router_table = rec
-                    self.broadcast("updatecost", self.router_table)
-                    self.showtable()
+            threadtask = Thread(target=self.dealWithInput, args=[types, info, srcPort, srcAddr])
+            threadtask.start()
+            threadtask.join()
 
+    # if there's a link change, wait for 30s and send new link to the other end
     def timewaiter(self):
         while True:
+            # check condition
             if self.last == 1 and self.changeBit != -1:
                 print(f"[{time.time()}] Start Waiting For Link Change")
-                time.sleep(10)
+                # wait for 30 seconds
+                time.sleep(30)
                 addr = (self.ip, self.lastNeigh)
                 data = {'type': "linkchange", 'info': self.changeBit}
                 print(f"[{time.time()}] Node {self.lastNeigh} cost updated to {self.changeBit}")
@@ -110,6 +92,35 @@ class Router():
                     self.broadcast("updatelinkcost", self.router_table)
                     self.showtable()
                 break
+
+    def dealWithInput(self, types, info, srcPort, srcAddr):
+        if types == "updatecost":
+            print(f"[{time.time()}] Message received at Node {self.src} from Node {srcPort}")
+            newTable = {}
+            for key in info:
+                newTable[int(key)] = info[key]
+            # check if the router table need to be updated
+            self.updatecost(srcAddr, newTable)
+        # receive link change info
+        elif types == "linkchange":
+            print(f"[{time.time()}] Link value message received at Node {self.src} from Node {srcPort}")
+            changebit = info
+            print(f"[{time.time()}] Node {srcPort} cost updated to {changebit}")
+            # modify the graph with new link
+            self.graph[self.src][srcPort] = [changebit, None, 1]
+            self.graph[srcPort][self.src] = [changebit, None, 1]
+            self.neighbour[srcPort] = changebit
+            thechange = 0
+            if self.router_table[srcPort][0] != changebit:
+                self.router_table[srcPort] = [changebit, None, 1]
+                thechange = 1
+            # update the router table through bellman-ford alg
+            rec, changed = self.bellman_ford(self.router_table)
+            # if router table changed, broadcast to all neighbours
+            if changed | thechange:
+                self.router_table = rec
+                self.broadcast("updatecost", self.router_table)
+                self.showtable()
 
     def bellman_ford(self, rec):
         infinity = float("inf")
@@ -162,7 +173,6 @@ class Router():
                 self.showtable()
                 self.poisonReverse("updatecost", self.router_table)
                 self.changed = 0
-                #self.showtable()
 
     def showtable(self):
         print(f"[{time.time()}] Node {self.src} Routing Table")
@@ -189,11 +199,7 @@ class Router():
                 addr = (self.ip, key)
                 data = {'type': "updatecost"}
                 if dest in self.graph[key] and key!=dest:
-                    #print(f"get in here destination {dest}")
-                    #print(f" first check {self.graph[key][dest]} {self.src}")
-                    #print(f" second check {self.router_table[dest]} {key}")
                     if self.graph[key][dest][1] == self.src and self.router_table[dest][1] == key:
-                        #print(f"infinite setting {dest}")
                         newTable[dest] = [float("inf"), None, 0]
                         data['info'] = newTable
                         self.udpSocket.sendto(str.encode(json.dumps(data)), addr)
