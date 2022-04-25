@@ -1,0 +1,161 @@
+"""
+CSEE4119 Programming Assignment2
+Author: Jing Tang
+Date: 2022.04.21
+
+Distance Algorithm Routing Algorithm
+"""
+
+import socket
+import sys
+import json
+import os
+import time
+from routenode import *
+from threading import Thread
+from heapq import *
+
+
+class Router:
+    graph = {}  # key is all other routers, value is their router table
+    neighbour = []
+    last = 0
+    changed = 1
+
+    def __init__(self, model, src, neigh, last, change, lastneigh, init_time, updateInterval):
+        self.ip = socket.gethostbyname(socket.gethostname())
+        self.src = src
+        self.routing_interval = 30
+        self.update_interval = updateInterval
+        self.servP = (self.ip, src)
+        self.initTime = init_time
+        self.last = last
+        self.changeBit = change
+        self.lastNeigh = lastneigh
+        self.model = model
+        self.udpSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.udpSocket.bind(self.servP)
+        self.model = model
+        self.neighbour = {}
+        self.pialg = {}
+        self.startflag = 0
+        self.graph[self.src] = {}
+        # key is all routers, value is [shortest path, next-hop, isneighbour]
+        self.router_table = {self.src: [0, None, 0]}
+        for key in neigh:
+            self.neighbour[int(key)] = [neigh[key], self.src, key]
+            self.graph[self.src][key] = [neigh[key], self.src, key]
+        self.Thread_recv = Thread(target=self.recv)
+        self.Thread_waiter = Thread(target=self.timewaiter)
+
+    def start(self):
+        try:
+            self.Thread_recv.daemon = True
+            self.Thread_waiter.daemon = True
+            self.Thread_recv.start()
+            self.Thread_waiter.start()
+            while self.Thread_recv.isAlive():
+                self.Thread_recv.join(1)
+            while self.Thread_waiter.isAlive():
+                self.Thread_waiter.join(1)
+        except (KeyboardInterrupt, SystemExit):
+            print("Exiting")
+            sys.exit()
+
+    def recv(self):
+        while True:
+            data, srcAddr = self.udpSocket.recvfrom(1024)
+            loaded = json.loads(data.decode())
+            types = loaded["type"]
+            info = loaded["info"]
+            seq = loaded["seq"]
+            srcPort = loaded["srcPort"]
+            ip, port = srcAddr
+            newLink = {}
+            changed = 0
+            for key in info:
+                newLink[int(key)] = info[key]
+            if types == "init":
+                self.startflag = 1
+                if srcPort in self.pialg and self.pialg[srcPort] > seq:
+                    print(f"[{time.time()}] DUPLICATE LSA packet Received, AND DROPPED:")
+                    print(f"- LSA of node {srcPort}")
+                    print(f"- Sequence number {seq}")
+                    print(f"- Received from {port}")
+                    continue
+
+                self.pialg[srcPort] = seq
+                self.graph[srcPort] = newLink
+                self.printTop()
+                initThread = Thread(target=self.startDij())
+                initThread.start()
+                initThread.join()
+
+    def timewaiter(self):
+        return
+
+    def dijkstra(self, graph, start):
+        vnum = len(graph)
+        paths = {}
+        curr = [(0, start, start)]
+        heapify(curr)
+        count = 0
+        nexthop = None
+        minE = float('inf')
+        top = []
+        vmin = start
+        for key in graph[start]:
+            if key[0] < minE:
+                minE = key[0]
+                nexthop = key
+        while count < vnum and curr is not None:
+            prev = vmin
+            plen, u, vmin = heappop(curr)
+            if paths[vmin] is not None:
+                continue
+            paths[vmin] = [plen, nexthop]
+            top.append([prev, vmin, graph[prev][vmin]])
+            for nextE in graph[vmin]:
+                if not paths[nextE[2]]:
+                    heappush(curr, (plen + nextE[0], u, nextE[2]))
+            count += 1
+        return paths, top
+
+    def startDij(self):
+        time.sleep(self.routing_interval)
+        rec, top = self.dijkstra(self.graph, self.src)
+        self.showTable(rec)
+
+    def broadcast(self, typee, seq, port):
+        for key in self.neighbour:
+            addr = (self.ip, key)
+            data = {'type': typee, 'info': self.neighbour, 'seq': seq, 'srcPort': port}
+            self.udpSocket.sendto(str.encode(json.dumps(data)), addr)
+            print(f"[{time.time()}] Message sent from Node {self.src} to Node {key}")
+
+    def showTable(self, path):
+        print(f"[{time.time()}] Node {self.src} Routing Table")
+        for i in sorted(path.keys()):
+            if i != self.src:
+                if path[i][1] == i:
+                    print(f"- ({path[i][0]}) -> Node {i}")
+                else:
+                    print(f"- ({path[i][0]}) -> Node {i}; "
+                          f"Next hop -> Node {path[i][1]}")
+
+    def printTop(self):
+        print(f"[{time.time()}] Node {self.src} Network Topology")
+        for i in sorted(self.graph.keys()):
+            for link in self.graph[i]:
+                print(f"- ({link[0]}) from Node {link[1]} to Node {link[2]}")
+
+
+def initLinkState(model, src, neigh, last, change, lastneigh, updateInterval):
+    try:
+        init_time = time.time()
+        router = Router(model, src, neigh, last, change, lastneigh, init_time, updateInterval)
+        if last == 1:
+            router.broadcast("init", 0, router.src)
+        router.start()
+    except KeyboardInterrupt:
+        print("Exiting")
