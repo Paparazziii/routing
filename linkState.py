@@ -76,6 +76,8 @@ class Router:
             seq = loaded["seq"]
             srcPort = loaded["srcPort"]
             ip, port = srcAddr
+            print(f"receive message from {port}")
+            print(f"original port is {srcPort}")
             newLink = {}
             changed = 0
             for key in info:
@@ -83,6 +85,7 @@ class Router:
             if types == "init":
                 # active the node
                 self.startflag = 1
+                print("start flag change to 1")
                 if srcPort in self.pialg and self.pialg[srcPort] >= seq:
                     print(f"[{time.time()}] DUPLICATE LSA packet Received, AND DROPPED:")
                     print(f"- LSA of node {srcPort}")
@@ -90,13 +93,18 @@ class Router:
                     print(f"- Received from {port}")
                     continue
 
+                elif srcPort == self.src:
+                    print("Reach origin point. stop")
+                    continue
+
                 self.broadcast(types, newLink, seq, srcPort)
                 self.pialg[srcPort] = seq
                 self.graph[srcPort] = newLink
                 self.printTop()
-                initThread = Thread(target=self.startDij())
+                initThread = Thread(target=self.startDij)
+                initThread.setDaemon(True)
                 initThread.start()
-                initThread.join()
+                #initThread.detach()
 
             elif types == "prd":
                 if srcPort in self.pialg and self.pialg[srcPort] >= seq:
@@ -108,17 +116,22 @@ class Router:
 
                 self.broadcast(types, newLink, seq, srcPort)
                 self.pialg[srcPort] = seq
+                #if self.graph[srcPort] != newLink:
+                if srcPort in self.graph:
+                    if self.graph[srcPort] == newLink:
+                        continue
                 self.graph[srcPort] = newLink
+                self.printTop()
                 if self.afterinit == 1:
                     initThread = Thread(target=self.regularDij())
                     initThread.start()
                     initThread.join()
-                else:
-                    self.printTop()
 
     def timewaiter(self):
         while True:
+            #print("get in while loop")
             if self.startflag == 1:
+                #print("get in sent")
                 self.seq += 1
                 self.broadcast("prd",self.neighbour, self.seq, self.src)
                 time.sleep(self.update_interval)
@@ -184,8 +197,10 @@ class Router:
 
     def printTop(self):
         print(f"[{time.time()}] Node {self.src} Network Topology")
+        #print(self.graph)
         for i in sorted(self.graph.keys()):
-            for link in self.graph[i]:
+            for link in self.graph[i].values():
+                #print(link)
                 print(f"- ({link[0]}) from Node {link[1]} to Node {link[2]}")
 
 
