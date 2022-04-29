@@ -25,7 +25,10 @@ class Router:
     def __init__(self, model, src, neigh, last, change, lastneigh, init_time, updateInterval):
         self.ip = socket.gethostbyname(socket.gethostname())
         self.src = src
+
+        # Here is where could set ROUTING_INTERVAL
         self.routing_interval = 30
+
         self.update_interval = updateInterval
         self.servP = (self.ip, src)
         self.initTime = init_time
@@ -39,9 +42,11 @@ class Router:
         self.neighbour = {}
         self.pialg = {}
         self.startflag = 0
+        self.afterinit = 0
+        self.seq = 0
         self.graph[self.src] = {}
+        self.path = {}
         # key is all routers, value is [shortest path, next-hop, isneighbour]
-        self.router_table = {self.src: [0, None, 0]}
         for key in neigh:
             self.neighbour[int(key)] = [neigh[key], self.src, key]
             self.graph[self.src][key] = [neigh[key], self.src, key]
@@ -76,14 +81,16 @@ class Router:
             for key in info:
                 newLink[int(key)] = info[key]
             if types == "init":
+                # active the node
                 self.startflag = 1
-                if srcPort in self.pialg and self.pialg[srcPort] > seq:
+                if srcPort in self.pialg and self.pialg[srcPort] >= seq:
                     print(f"[{time.time()}] DUPLICATE LSA packet Received, AND DROPPED:")
                     print(f"- LSA of node {srcPort}")
                     print(f"- Sequence number {seq}")
                     print(f"- Received from {port}")
                     continue
 
+                self.broadcast(types, newLink, seq, srcPort)
                 self.pialg[srcPort] = seq
                 self.graph[srcPort] = newLink
                 self.printTop()
@@ -91,8 +98,30 @@ class Router:
                 initThread.start()
                 initThread.join()
 
+            elif types == "prd":
+                if srcPort in self.pialg and self.pialg[srcPort] >= seq:
+                    print(f"[{time.time()}] DUPLICATE LSA packet Received, AND DROPPED:")
+                    print(f"- LSA of node {srcPort}")
+                    print(f"- Sequence number {seq}")
+                    print(f"- Received from {port}")
+                    continue
+
+                self.broadcast(types, newLink, seq, srcPort)
+                self.pialg[srcPort] = seq
+                self.graph[srcPort] = newLink
+                if self.afterinit == 1:
+                    initThread = Thread(target=self.regularDij())
+                    initThread.start()
+                    initThread.join()
+                else:
+                    self.printTop()
+
     def timewaiter(self):
-        return
+        while True:
+            if self.startflag == 1:
+                self.seq += 1
+                self.broadcast("prd",self.neighbour, self.seq, self.src)
+                time.sleep(self.update_interval)
 
     def dijkstra(self, graph, start):
         vnum = len(graph)
@@ -102,34 +131,44 @@ class Router:
         count = 0
         nexthop = None
         minE = float('inf')
-        top = []
-        vmin = start
+        #top = []
+        #vmin = start
         for key in graph[start]:
             if key[0] < minE:
                 minE = key[0]
                 nexthop = key
         while count < vnum and curr is not None:
-            prev = vmin
+            #prev = vmin
             plen, u, vmin = heappop(curr)
             if paths[vmin] is not None:
                 continue
             paths[vmin] = [plen, nexthop]
-            top.append([prev, vmin, graph[prev][vmin]])
+            #top.append([prev, vmin, graph[prev][vmin]])
             for nextE in graph[vmin]:
                 if not paths[nextE[2]]:
                     heappush(curr, (plen + nextE[0], u, nextE[2]))
             count += 1
-        return paths, top
+        return paths
 
     def startDij(self):
         time.sleep(self.routing_interval)
-        rec, top = self.dijkstra(self.graph, self.src)
+        rec = self.dijkstra(self.graph, self.src)
+        self.path = rec
+        self.printTop()
         self.showTable(rec)
+        self.afterinit = 1
 
-    def broadcast(self, typee, seq, port):
+    def regularDij(self):
+        origin = self.path
+        rec = self.dijkstra(self.graph, self.src)
+        if origin != rec:
+            self.printTop()
+            self.showTable(rec)
+
+    def broadcast(self, typee, info, seq, port):
         for key in self.neighbour:
             addr = (self.ip, key)
-            data = {'type': typee, 'info': self.neighbour, 'seq': seq, 'srcPort': port}
+            data = {'type': typee, 'info': info, 'seq': seq, 'srcPort': port}
             self.udpSocket.sendto(str.encode(json.dumps(data)), addr)
             print(f"[{time.time()}] Message sent from Node {self.src} to Node {key}")
 
@@ -155,7 +194,8 @@ def initLinkState(model, src, neigh, last, change, lastneigh, updateInterval):
         init_time = time.time()
         router = Router(model, src, neigh, last, change, lastneigh, init_time, updateInterval)
         if last == 1:
-            router.broadcast("init", 0, router.src)
+            router.startflag = 1
+            router.broadcast("init", router.neighbour, 0, router.src)
         router.start()
     except KeyboardInterrupt:
         print("Exiting")
