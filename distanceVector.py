@@ -65,7 +65,7 @@ class Router():
             info = loaded["info"]
             ip, srcPort = srcAddr
             threadtask = Thread(target=self.dealWithInput, args=[types, info, srcPort, srcAddr])
-            threadtask.setDaemon(True)
+            threadtask.daemon = True
             threadtask.start()
             #threadtask.join()
 
@@ -138,6 +138,9 @@ class Router():
                         if d < cost:
                             cost = d
                             nexthop = nb
+                if dest not in rec:
+                    changed = 1
+                    rec[dest] = [cost, nexthop, 0]
                 if cost != rec[dest][0]:
                     changed = 1
                     rec[dest][0] = cost

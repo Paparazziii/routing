@@ -76,8 +76,6 @@ class Router:
             seq = loaded["seq"]
             srcPort = loaded["srcPort"]
             ip, port = srcAddr
-            print(f"receive message from {port}")
-            print(f"original port is {srcPort}")
             newLink = {}
             changed = 0
             for key in info:
@@ -85,7 +83,6 @@ class Router:
             if types == "init":
                 # active the node
                 self.startflag = 1
-                print("start flag change to 1")
                 if srcPort in self.pialg and self.pialg[srcPort] >= seq:
                     print(f"[{time.time()}] DUPLICATE LSA packet Received, AND DROPPED:")
                     print(f"- LSA of node {srcPort}")
@@ -94,17 +91,16 @@ class Router:
                     continue
 
                 elif srcPort == self.src:
-                    print("Reach origin point. stop")
                     continue
 
+                print(f"[{time.time()}] LSA of node {srcPort} with sequence number {seq} received from Node {port}")
                 self.broadcast(types, newLink, seq, srcPort)
                 self.pialg[srcPort] = seq
                 self.graph[srcPort] = newLink
                 self.printTop()
                 initThread = Thread(target=self.startDij)
-                initThread.setDaemon(True)
+                initThread.daemon = True
                 initThread.start()
-                #initThread.detach()
 
             elif types == "prd":
                 if srcPort in self.pialg and self.pialg[srcPort] >= seq:
@@ -116,7 +112,6 @@ class Router:
 
                 self.broadcast(types, newLink, seq, srcPort)
                 self.pialg[srcPort] = seq
-                #if self.graph[srcPort] != newLink:
                 if srcPort in self.graph:
                     if self.graph[srcPort] == newLink:
                         continue
@@ -129,9 +124,7 @@ class Router:
 
     def timewaiter(self):
         while True:
-            #print("get in while loop")
             if self.startflag == 1:
-                #print("get in sent")
                 self.seq += 1
                 self.broadcast("prd",self.neighbour, self.seq, self.src)
                 time.sleep(self.update_interval)
@@ -144,19 +137,15 @@ class Router:
         count = 0
         nexthop = None
         minE = float('inf')
-        #top = []
-        #vmin = start
         for key in graph[start]:
             if key[0] < minE:
                 minE = key[0]
                 nexthop = key
         while count < vnum and curr is not None:
-            #prev = vmin
             plen, u, vmin = heappop(curr)
             if paths[vmin] is not None:
                 continue
             paths[vmin] = [plen, nexthop]
-            #top.append([prev, vmin, graph[prev][vmin]])
             for nextE in graph[vmin]:
                 if not paths[nextE[2]]:
                     heappush(curr, (plen + nextE[0], u, nextE[2]))
@@ -183,7 +172,7 @@ class Router:
             addr = (self.ip, key)
             data = {'type': typee, 'info': info, 'seq': seq, 'srcPort': port}
             self.udpSocket.sendto(str.encode(json.dumps(data)), addr)
-            print(f"[{time.time()}] Message sent from Node {self.src} to Node {key}")
+            print(f"[{time.time()}] LSA of Node {port} with sequence number {seq} sent to Node {key}")
 
     def showTable(self, path):
         print(f"[{time.time()}] Node {self.src} Routing Table")
@@ -197,10 +186,8 @@ class Router:
 
     def printTop(self):
         print(f"[{time.time()}] Node {self.src} Network Topology")
-        #print(self.graph)
         for i in sorted(self.graph.keys()):
             for link in self.graph[i].values():
-                #print(link)
                 print(f"- ({link[0]}) from Node {link[1]} to Node {link[2]}")
 
 
