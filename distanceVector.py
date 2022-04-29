@@ -68,6 +68,7 @@ class Router():
             threadtask.daemon = True
             threadtask.start()
             #threadtask.join()
+            time.sleep(0.1)
 
     # if there's a link change, wait for 30s and send new link to the other end
     def timewaiter(self):
