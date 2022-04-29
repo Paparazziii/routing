@@ -65,8 +65,9 @@ class Router():
             info = loaded["info"]
             ip, srcPort = srcAddr
             threadtask = Thread(target=self.dealWithInput, args=[types, info, srcPort, srcAddr])
+            threadtask.setDaemon(True)
             threadtask.start()
-            threadtask.join()
+            #threadtask.join()
 
     # if there's a link change, wait for 30s and send new link to the other end
     def timewaiter(self):
