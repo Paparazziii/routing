@@ -121,7 +121,6 @@ class Router:
                 if self.afterinit == 1:
                     initThread = Thread(target=self.regularDij)
                     initThread.start()
-                    #initThread.join()
 
     def timewaiter(self):
         while True:
@@ -147,7 +146,10 @@ class Router:
             if vmin in paths:
                 if paths[vmin] is not None:
                     continue
-            paths[vmin] = [plen, nexthop]
+            if vmin != nexthop:
+                paths[vmin] = [plen, nexthop]
+            else:
+                paths[vmin] = [plen, None]
             for nextE in graph[vmin].values():
                 if nextE[2] not in paths:
                     heappush(curr, (plen + nextE[0], u, nextE[2]))
