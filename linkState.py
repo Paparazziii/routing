@@ -109,7 +109,8 @@ class Router:
                     print(f"- Sequence number {seq}")
                     print(f"- Received from {port}")
                     continue
-
+            
+                print(f"[{time.time()}] LSA of node {srcPort} with sequence number {seq} received from Node {port}")
                 self.broadcast(types, newLink, seq, srcPort)
                 self.pialg[srcPort] = seq
                 if srcPort in self.graph:
@@ -118,9 +119,9 @@ class Router:
                 self.graph[srcPort] = newLink
                 self.printTop()
                 if self.afterinit == 1:
-                    initThread = Thread(target=self.regularDij())
+                    initThread = Thread(target=self.regularDij)
                     initThread.start()
-                    initThread.join()
+                    #initThread.join()
 
     def timewaiter(self):
         while True:
@@ -138,16 +139,17 @@ class Router:
         nexthop = None
         minE = float('inf')
         for key in graph[start]:
-            if key[0] < minE:
-                minE = key[0]
+            if graph[start][key][0] < minE:
+                minE = graph[start][key][0]
                 nexthop = key
         while count < vnum and curr is not None:
             plen, u, vmin = heappop(curr)
-            if paths[vmin] is not None:
-                continue
+            if vmin in paths:
+                if paths[vmin] is not None:
+                    continue
             paths[vmin] = [plen, nexthop]
-            for nextE in graph[vmin]:
-                if not paths[nextE[2]]:
+            for nextE in graph[vmin].values():
+                if nextE[2] not in paths:
                     heappush(curr, (plen + nextE[0], u, nextE[2]))
             count += 1
         return paths
@@ -198,6 +200,9 @@ def initLinkState(model, src, neigh, last, change, lastneigh, updateInterval):
         if last == 1:
             router.startflag = 1
             router.broadcast("init", router.neighbour, 0, router.src)
+            initThread = Thread(target=router.startDij)
+            initThread.daemon = True
+            initThread.start()
         router.start()
     except KeyboardInterrupt:
         print("Exiting")
