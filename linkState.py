@@ -87,9 +87,9 @@ class Router:
                 print(f"[{time.time()}] Link value message received at Node {self.src} from Node {port}")
                 changebit = int(info)
                 print(f"[{time.time()}] Node {srcPort} cost updated to {changebit}")
-                self.graph[self.src][self.lastNeigh] = [changebit, self.src, self.lastNeigh]
-                self.graph[self.lastNeigh][self.src] = [changebit, self.lastNeigh, self.src]
-                self.neighbour[self.lastNeigh] = [changebit, self.src, self.lastNeigh]
+                self.graph[self.src][port] = [changebit, self.src, port]
+                self.graph[port][self.src] = [changebit, port, self.src]
+                self.neighbour[port] = [changebit, self.src, port]
                 initThread = Thread(target=self.regularDij)
                 initThread.daemon = True
                 initThread.start()
@@ -121,13 +121,13 @@ class Router:
 
             elif types == "prd":
                 if srcPort in self.pialg and self.pialg[srcPort] >= seq:
-                    print(f"[{time.time()}] DUPLICATE LSA packet Received, AND DROPPED:")
-                    print(f"- LSA of node {srcPort}")
-                    print(f"- Sequence number {seq}")
-                    print(f"- Received from {port}")
+                    #print(f"[{time.time()}] DUPLICATE LSA packet Received, AND DROPPED:")
+                    #print(f"- LSA of node {srcPort}")
+                    #print(f"- Sequence number {seq}")
+                    #print(f"- Received from {port}")
                     continue
             
-                print(f"[{time.time()}] LSA of node {srcPort} with sequence number {seq} received from Node {port}")
+                #print(f"[{time.time()}] LSA of node {srcPort} with sequence number {seq} received from Node {port}")
                 self.broadcast(types, newLink, seq, srcPort)
                 self.pialg[srcPort] = seq
                 if srcPort in self.graph:
@@ -155,7 +155,6 @@ class Router:
         heapify(curr)
         while count < vnum and curr is not None:
             plen, u, path, vmin = heappop(curr)
-            print(plen, u, path, vmin)
             if vmin in paths:
                 if paths[vmin] is not None:
                     continue
@@ -170,7 +169,7 @@ class Router:
         if self.last == 1 and self.changeBit != -1:
             # print(f"[{time.time()}] Start Waiting For Link Change")
             # wait for 1.2 * Routing_interval seconds
-            time.sleep(1.2*self.update_interval)
+            time.sleep(1.2*self.routing_interval)
             addr = (self.ip, self.lastNeigh)
             data = {'type': "linkchange", 'info': self.changeBit, 'seq': 0, 'srcPort': self.src}
             print(f"[{time.time()}] Node {self.lastNeigh} cost updated to {self.changeBit}")
@@ -206,7 +205,7 @@ class Router:
             addr = (self.ip, key)
             data = {'type': typee, 'info': info, 'seq': seq, 'srcPort': port}
             self.udpSocket.sendto(str.encode(json.dumps(data)), addr)
-            print(f"[{time.time()}] LSA of Node {port} with sequence number {seq} sent to Node {key}")
+            #print(f"[{time.time()}] LSA of Node {port} with sequence number {seq} sent to Node {key}")
 
     def showTable(self, path):
         print(f"[{time.time()}] Node {self.src} Routing Table")
