@@ -52,17 +52,22 @@ class Router:
             self.graph[self.src][key] = [neigh[key], self.src, key]
         self.Thread_recv = Thread(target=self.recv)
         self.Thread_waiter = Thread(target=self.timewaiter)
+        self.Thread_linkchange = Thread(target=self.linkchange)
 
     def start(self):
         try:
             self.Thread_recv.daemon = True
             self.Thread_waiter.daemon = True
+            self.Thread_linkchange.daemon = True
             self.Thread_recv.start()
             self.Thread_waiter.start()
+            self.Thread_linkchange.start()
             while self.Thread_recv.isAlive():
                 self.Thread_recv.join(1)
             while self.Thread_waiter.isAlive():
                 self.Thread_waiter.join(1)
+            while self.Thread_linkchange.isAlive():
+                self.Thread_linkchange.join(1)
         except (KeyboardInterrupt, SystemExit):
             print("Exiting")
             sys.exit()
@@ -78,6 +83,18 @@ class Router:
             ip, port = srcAddr
             newLink = {}
             changed = 0
+            if types == "linkchange":
+                print(f"[{time.time()}] Link value message received at Node {self.src} from Node {port}")
+                changebit = int(info)
+                print(f"[{time.time()}] Node {srcPort} cost updated to {changebit}")
+                self.graph[self.src][self.lastNeigh] = [changebit, self.src, self.lastNeigh]
+                self.graph[self.lastNeigh][self.src] = [changebit, self.lastNeigh, self.src]
+                self.neighbour[self.lastNeigh] = [changebit, self.src, self.lastNeigh]
+                initThread = Thread(target=self.regularDij)
+                initThread.daemon = True
+                initThread.start()
+                continue
+
             for key in info:
                 newLink[int(key)] = info[key]
             if types == "init":
@@ -122,6 +139,7 @@ class Router:
                     initThread = Thread(target=self.regularDij)
                     initThread.start()
 
+
     def timewaiter(self):
         while True:
             if self.startflag == 1:
@@ -132,20 +150,9 @@ class Router:
     def dijkstra(self, graph, start):
         vnum = len(graph)
         paths = {}
-        #curr = [(0, start, nexthop, start)]
-        #heapify(curr)
         count = 0
-        nexthop = None
         curr = [(0, start, [], start)]
         heapify(curr)
-        # minE = float('inf')
-        """for key in graph[start]:
-            if graph[start][key][0] < minE:
-                minE = graph[start][key][0]
-                nexthop = key
-        """
-        # for nextE in graph[start].values():
-        #   heappush(curr, (nextE[0], start, [start,nextE[2]], nextE[2]))
         while count < vnum and curr is not None:
             plen, u, path, vmin = heappop(curr)
             print(plen, u, path, vmin)
@@ -159,6 +166,25 @@ class Router:
             count += 1
         return paths
 
+    def linkchange(self):
+        if self.last == 1 and self.changeBit != -1:
+            # print(f"[{time.time()}] Start Waiting For Link Change")
+            # wait for 1.2 * Routing_interval seconds
+            time.sleep(1.2*self.update_interval)
+            addr = (self.ip, self.lastNeigh)
+            data = {'type': "linkchange", 'info': self.changeBit, 'seq': 0, 'srcPort': self.src}
+            print(f"[{time.time()}] Node {self.lastNeigh} cost updated to {self.changeBit}")
+            self.udpSocket.sendto(str.encode(json.dumps(data)), addr)
+            self.graph[self.src][self.lastNeigh] = [self.changeBit, self.src, self.lastNeigh]
+            self.graph[self.lastNeigh][self.src] = [self.changeBit, self.lastNeigh, self.src]
+            self.neighbour[self.lastNeigh] = [self.changeBit, self.src, self.lastNeigh]
+            origin = self.path
+            rec = self.dijkstra(self.graph, self.src)
+            if origin != rec:
+                self.path = rec
+                self.printTop()
+                self.showTable(rec)
+
     def startDij(self):
         time.sleep(self.routing_interval)
         rec = self.dijkstra(self.graph, self.src)
@@ -171,6 +197,7 @@ class Router:
         origin = self.path
         rec = self.dijkstra(self.graph, self.src)
         if origin != rec:
+            self.path = rec
             self.printTop()
             self.showTable(rec)
 
