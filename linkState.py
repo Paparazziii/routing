@@ -121,13 +121,13 @@ class Router:
 
             elif types == "prd":
                 if srcPort in self.pialg and self.pialg[srcPort] >= seq:
-                    #print(f"[{time.time()}] DUPLICATE LSA packet Received, AND DROPPED:")
-                    #print(f"- LSA of node {srcPort}")
-                    #print(f"- Sequence number {seq}")
-                    #print(f"- Received from {port}")
+                    print(f"[{time.time()}] DUPLICATE LSA packet Received, AND DROPPED:")
+                    print(f"- LSA of node {srcPort}")
+                    print(f"- Sequence number {seq}")
+                    print(f"- Received from {port}")
                     continue
             
-                #print(f"[{time.time()}] LSA of node {srcPort} with sequence number {seq} received from Node {port}")
+                print(f"[{time.time()}] LSA of node {srcPort} with sequence number {seq} received from Node {port}")
                 self.broadcast(types, newLink, seq, srcPort)
                 self.pialg[srcPort] = seq
                 if srcPort in self.graph:
@@ -205,7 +205,7 @@ class Router:
             addr = (self.ip, key)
             data = {'type': typee, 'info': info, 'seq': seq, 'srcPort': port}
             self.udpSocket.sendto(str.encode(json.dumps(data)), addr)
-            #print(f"[{time.time()}] LSA of Node {port} with sequence number {seq} sent to Node {key}")
+            print(f"[{time.time()}] LSA of Node {port} with sequence number {seq} sent to Node {key}")
 
     def showTable(self, path):
         print(f"[{time.time()}] Node {self.src} Routing Table")
