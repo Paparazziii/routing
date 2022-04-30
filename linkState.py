@@ -3,7 +3,7 @@ CSEE4119 Programming Assignment2
 Author: Jing Tang
 Date: 2022.04.21
 
-Distance Algorithm Routing Algorithm
+Link State Routing Algorithm
 """
 
 import socket
