@@ -3,7 +3,7 @@ CSEE4119 Programming Assignment2
 Author: Jing Tang
 Date: 2022.04.21
 
-Distance Algorithm Routing Algorithm
+Distance Vector Routing Algorithm
 """
 
 import socket
@@ -83,13 +83,15 @@ class Router():
                 print(f"[{time.time()}] Node {self.lastNeigh} cost updated to {self.changeBit}")
                 self.udpSocket.sendto(str.encode(json.dumps(data)), addr)
                 print(f"[{time.time()}] Link value message sent from Node {self.src} to Node {self.lastNeigh}")
-                # self.router_table[self.lastNeigh] = [change, None, 1]
+
+                # update graph and routing table
                 self.graph[self.src][self.lastNeigh] = [self.changeBit, None, 1]
                 self.graph[self.lastNeigh][self.src] = [self.changeBit, None, 1]        
                 self.router_table[self.lastNeigh] = [self.changeBit, None, 1]
                 self.neighbour[self.lastNeigh] = self.changeBit
                 rec, changed = self.bellman_ford(self.router_table)
                 if changed:
+                    # if routing table changed, broadcast new routing table
                     self.router_table = rec
                     self.broadcast("updatelinkcost", self.router_table)
                     self.showtable()
@@ -124,6 +126,7 @@ class Router():
                 self.broadcast("updatecost", self.router_table)
                 self.showtable()
 
+    # do bellman_ford with current graph
     def bellman_ford(self, rec):
         infinity = float("inf")
         changed = 0
@@ -149,6 +152,7 @@ class Router():
 
         return rec, changed
 
+    # check if it is necessary to update the routing table
     def updatecost(self, srcAddr, info):
         ip, srcPort = srcAddr
         srcPort = int(srcPort)
@@ -179,6 +183,7 @@ class Router():
                 self.poisonReverse("updatecost", self.router_table)
                 self.changed = 0
 
+    # print out routing table with specific format
     def showtable(self):
         print(f"[{time.time()}] Node {self.src} Routing Table")
         for i in sorted(self.router_table.keys()):
@@ -189,6 +194,7 @@ class Router():
                     print(f"- ({self.router_table[i][0]}) -> Node {i}; "
                         f"Next hop -> Node {self.router_table[i][1]}")
 
+    # broadcast routing table to all neighbours
     def broadcast(self, type, table):
         for key in self.neighbour:
             addr = (self.ip, key)
@@ -196,6 +202,7 @@ class Router():
             self.udpSocket.sendto(str.encode(json.dumps(data)), addr)
             print(f"[{time.time()}] Message sent from Node {self.src} to Node {key}")
 
+    # when find poison reverse existed, send inf to the node with has cycles with source
     def poisonReverse(self, type, table):
         poison = []
         newTable = self.router_table

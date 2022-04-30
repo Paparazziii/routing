@@ -139,7 +139,7 @@ class Router:
                     initThread = Thread(target=self.regularDij)
                     initThread.start()
 
-
+    # periodically send out lSA packet after the node the active
     def timewaiter(self):
         while True:
             if self.startflag == 1:
@@ -147,6 +147,8 @@ class Router:
                 self.broadcast("prd",self.neighbour, self.seq, self.src)
                 time.sleep(self.update_interval)
 
+    # do dijkstra algorithm to the graph
+    # return shortest path and its corresponding cost
     def dijkstra(self, graph, start):
         vnum = len(graph)
         paths = {}
@@ -165,15 +167,16 @@ class Router:
             count += 1
         return paths
 
+    # deal with link change
     def linkchange(self):
         if self.last == 1 and self.changeBit != -1:
-            # print(f"[{time.time()}] Start Waiting For Link Change")
             # wait for 1.2 * Routing_interval seconds
             time.sleep(1.2*self.routing_interval)
             addr = (self.ip, self.lastNeigh)
             data = {'type': "linkchange", 'info': self.changeBit, 'seq': 0, 'srcPort': self.src}
             print(f"[{time.time()}] Node {self.lastNeigh} cost updated to {self.changeBit}")
             self.udpSocket.sendto(str.encode(json.dumps(data)), addr)
+            # update local table and do dijkstra
             self.graph[self.src][self.lastNeigh] = [self.changeBit, self.src, self.lastNeigh]
             self.graph[self.lastNeigh][self.src] = [self.changeBit, self.lastNeigh, self.src]
             self.neighbour[self.lastNeigh] = [self.changeBit, self.src, self.lastNeigh]
@@ -184,6 +187,7 @@ class Router:
                 self.printTop()
                 self.showTable(rec)
 
+    # first dijkstra after ROUTING INTERVAL
     def startDij(self):
         time.sleep(self.routing_interval)
         rec = self.dijkstra(self.graph, self.src)
@@ -192,6 +196,7 @@ class Router:
         self.showTable(rec)
         self.afterinit = 1
 
+    # regular dijkstra after each time the topology is changed
     def regularDij(self):
         origin = self.path
         rec = self.dijkstra(self.graph, self.src)
@@ -200,6 +205,7 @@ class Router:
             self.printTop()
             self.showTable(rec)
 
+    # broadcast the lSA packet
     def broadcast(self, typee, info, seq, port):
         for key in self.neighbour:
             addr = (self.ip, key)
@@ -207,6 +213,7 @@ class Router:
             self.udpSocket.sendto(str.encode(json.dumps(data)), addr)
             print(f"[{time.time()}] LSA of Node {port} with sequence number {seq} sent to Node {key}")
 
+    # print table in specific format
     def showTable(self, path):
         print(f"[{time.time()}] Node {self.src} Routing Table")
         for i in sorted(path.keys()):
@@ -217,6 +224,7 @@ class Router:
                     print(f"- ({path[i][0]}) -> Node {i}; "
                           f"Next hop -> Node {path[i][1][0]}")
 
+    # print topology in specific format
     def printTop(self):
         print(f"[{time.time()}] Node {self.src} Network Topology")
         for i in sorted(self.graph.keys()):
