@@ -132,27 +132,31 @@ class Router:
     def dijkstra(self, graph, start):
         vnum = len(graph)
         paths = {}
-        curr = [(0, start, start)]
-        heapify(curr)
+        #curr = [(0, start, nexthop, start)]
+        #heapify(curr)
         count = 0
         nexthop = None
-        minE = float('inf')
-        for key in graph[start]:
+        curr = [(0, start, [], start)]
+        heapify(curr)
+        # minE = float('inf')
+        """for key in graph[start]:
             if graph[start][key][0] < minE:
                 minE = graph[start][key][0]
                 nexthop = key
+        """
+        for nextE in graph[start].values:
+            heappush(curr, (nextE[0], start, [], nextE[2]))
         while count < vnum and curr is not None:
-            plen, u, vmin = heappop(curr)
+            plen, u, path, vmin = heappop(curr)
             if vmin in paths:
                 if paths[vmin] is not None:
                     continue
-            if vmin != nexthop:
-                paths[vmin] = [plen, nexthop]
-            else:
-                paths[vmin] = [plen, None]
+            paths[vmin] = [plen, path]
             for nextE in graph[vmin].values():
                 if nextE[2] not in paths:
-                    heappush(curr, (plen + nextE[0], u, nextE[2]))
+                    if nextE[2] not in path:
+                        path.append(nextE[2])
+                    heappush(curr, (plen + nextE[0], u, path, nextE[2]))
             count += 1
         return paths
 
@@ -182,11 +186,11 @@ class Router:
         print(f"[{time.time()}] Node {self.src} Routing Table")
         for i in sorted(path.keys()):
             if i != self.src:
-                if path[i][1] == i:
+                if path[i][1][2] == i:
                     print(f"- ({path[i][0]}) -> Node {i}")
                 else:
                     print(f"- ({path[i][0]}) -> Node {i}; "
-                          f"Next hop -> Node {path[i][1]}")
+                          f"Next hop -> Node {path[i][1][2]}")
 
     def printTop(self):
         print(f"[{time.time()}] Node {self.src} Network Topology")
