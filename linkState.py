@@ -144,19 +144,18 @@ class Router:
                 minE = graph[start][key][0]
                 nexthop = key
         """
-        for nextE in graph[start].values:
-            heappush(curr, (nextE[0], start, [], nextE[2]))
+        # for nextE in graph[start].values():
+        #   heappush(curr, (nextE[0], start, [start,nextE[2]], nextE[2]))
         while count < vnum and curr is not None:
             plen, u, path, vmin = heappop(curr)
+            print(plen, u, path, vmin)
             if vmin in paths:
                 if paths[vmin] is not None:
                     continue
             paths[vmin] = [plen, path]
             for nextE in graph[vmin].values():
                 if nextE[2] not in paths:
-                    if nextE[2] not in path:
-                        path.append(nextE[2])
-                    heappush(curr, (plen + nextE[0], u, path, nextE[2]))
+                    heappush(curr, (plen + nextE[0], u, path+[nextE[2]], nextE[2]))
             count += 1
         return paths
 
@@ -186,11 +185,11 @@ class Router:
         print(f"[{time.time()}] Node {self.src} Routing Table")
         for i in sorted(path.keys()):
             if i != self.src:
-                if path[i][1][2] == i:
+                if path[i][1][0] == i:
                     print(f"- ({path[i][0]}) -> Node {i}")
                 else:
                     print(f"- ({path[i][0]}) -> Node {i}; "
-                          f"Next hop -> Node {path[i][1][2]}")
+                          f"Next hop -> Node {path[i][1][0]}")
 
     def printTop(self):
         print(f"[{time.time()}] Node {self.src} Network Topology")
